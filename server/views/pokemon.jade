@@ -1,0 +1,31 @@
+extends layout
+
+head
+    link(rel='stylesheet', href="/stylesheets/pokeStyle.css")
+
+block content
+    div.header
+        h1= "Pokedex"
+        p Welcome to the Pokedex
+        input(placeholder="Search" onkeyup="javascript:search(this.value)")
+        button(onclick="javascript:prev()")= "Previous"
+        button(onclick="javascript:next()")= "Next"
+        select(onchange="javascript:sort(this.value)")
+            option(value="id")= "Sort by"
+            option(value="weight")= "Weight"
+            option(value="hp")= "Hp"
+            option(value="attack")= "Attack"
+            option(value="defense")= "Defense"
+            option(value="speed")= "Speed"
+            option(value="special_attack")= "Special attack"
+            option(value="special_defense")= "Special defense"
+        button(onclick="javascript:reverseSort();")= "Reverse sort"
+
+    each pokemon in pokemons
+        div.container(data-name=pokemon.name, data-id=pokemon.pokemon_id, data-weight=pokemon.weight, data-base-experience=pokemon.base_experience, data-hp=pokemon.hp, data-attack=pokemon.attack, data-defense=pokemon.defense, data-special-attack=pokemon.special_attack, data-special-defense=pokemon.special_defense, data-speed=pokemon.speed)
+            div
+                a(href=`/pokemon/${pokemon.id}`)
+                    img(src=pokemon.png_url style='width:250px;height:250px;')
+            div
+                h1= `${pokemon.name}`
+

@@ -1,0 +1,9 @@
+extends layout
+
+block content
+    div
+      h1 Express
+      p Welcome to Express
+        form(action='/refresh', method='post')
+            button(type='submit' onclick='return confirm("are you sure you want to fresh the database? This takes a shit ton of time")') refresh
+            form

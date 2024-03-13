@@ -1,0 +1,18 @@
+extends layout
+
+block content
+    div
+        img(src=pokemon.png_url style='width:200px;height:200px;')
+        h1= pokemon.name
+        h4= `- ${pokemon.hp} hp`
+        h4= `- ${pokemon.attack} attack`
+        h4= `- ${pokemon.defense} defense`
+        h4= `- ${pokemon.special_attack} special attack`
+        h4= `- ${pokemon.special_defense} special defense`
+        h4= `- ${pokemon.speed} speed`
+        h4= `- ${pokemon.weight} lbs`
+        h4= `- ${pokemon.base_experience} base experience`
+        form(method="POST" action="/pokemon/" + pokemon.id + "/favourite")
+            button(type="submit")
+                img(style="width:50px;height:auto;cursor:pointer;" src="https://www.levensceremonie.nl/wp-content/uploads/2011/12/Star_Glow-1080x675.png")
+

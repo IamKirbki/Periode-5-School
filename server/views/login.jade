@@ -1,0 +1,11 @@
+extends layout
+
+block content
+    form(id="inputFormLogin" class="form")
+        label= "Email:"
+        input(required placeholder="Email")
+        label= "Password:"
+        input(type="password" id="password" required placeholder="Password")
+        button(type="submit") Login
+        a(href="/register") Register
+        label(id="message" style="display: none;")= ""
