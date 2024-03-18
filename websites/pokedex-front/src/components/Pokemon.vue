@@ -10,7 +10,7 @@
         <button @click="next">Next</button>
       </div>
       <div>
-        <select id="select" v-model="sortBy" @change="sort">
+        <select id="select" ref="select" @change="sort">
           <option value="id">Sort by</option>
           <option value="weight">Weight</option>
           <option value="hp">Hp</option>
@@ -28,6 +28,9 @@
       </div>
       <div class="button-container favoritesButton">
         <button @click="goToFavorites">Favorites</button>
+      </div>
+      <div class="button-container loginButton">
+        <button @click="logout">Logout</button>
       </div>
     </div>
 
@@ -60,18 +63,21 @@ export default {
   data() {
     return {
       searchText: '',
-      sortBy: 'id',
+      sortBy: localStorage.getItem("sortBy"),
       pokemons: [],
       perPage: 50,
       page: 1,
       direction: false,
+      sortSelect: this.sortSelect,
     };
   },
   mounted() {
     if (localStorage.getItem("user_id")) {
       document.querySelector(".loginButton").style.display = "none"
+      document.querySelectorAll(".loginButton")[1].style.display = "flex"
     } else {
       document.querySelector(".favoritesButton").style.display = "none"
+      document.querySelectorAll(".loginButton")[1].style.display = "none"
     }
     fetch('http://localhost:3000/api/pokemon/all')
       .then(response => response.json())
@@ -80,8 +86,23 @@ export default {
         this.$nextTick(() => {
           this.paginationFix();
           this.$nextTick(() => {
-            this.direction = localStorage.getItem("reverseSort");
-            this.sort({ value: localStorage.getItem("sortBy") })
+            if (localStorage.getItem("reverseSort") === "true") {
+              this.direction = true;
+            }
+            console.log(this.direction)
+            this.sort({ value: localStorage.getItem("sortBy") });
+            let selectedValue = localStorage.getItem("sortBy")
+            const selectElement = this.$refs.select;
+            if (selectedValue) {
+              if (selectedValue) {
+                for (let i = 0; i < selectElement.options.length; i++) {
+                  if (selectElement.options[i].value === selectedValue) {
+                    selectElement.options[i].selected = true;
+                    break;
+                  }
+                }
+              }
+            }
           })
         })
       })
@@ -196,8 +217,9 @@ export default {
       } else if (this.direction === false) {
         this.direction = true
       } else {
-        return "How is direction removed?";
+        console.error("How is direction removed?");
       }
+      console.log(this.direction)
       this.sort(document.querySelector('select'))
     },
     goToLogin() {
@@ -208,6 +230,11 @@ export default {
     },
     goToFavorites() {
       window.location.replace('/favorites')
+    },
+    logout() {
+      localStorage.removeItem("user_id")
+      localStorage.removeItem("token")
+      window.location.reload();
     }
   },
 };

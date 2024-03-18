@@ -179,6 +179,10 @@ export default {
   text-align: left;
 }
 
+.pokemon-stats td div {
+  max-width: 100%;
+}
+
 .stat-bar {
   height: 10px;
   background-color: #4CAF50;
