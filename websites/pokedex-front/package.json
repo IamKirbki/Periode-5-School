@@ -9,11 +9,15 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "jquery": "^3.7.1",
+    "vanilla-lazyload": "^17.8.8",
     "vue": "^3.4.21",
     "vue-router": "^4.3.0"
   },
   "devDependencies": {
+    "@types/jquery": "^3.5.29",
     "@vitejs/plugin-vue": "^5.0.4",
+    "expose-loader": "^5.0.0",
     "vite": "^5.1.6"
   }
 }

@@ -7,6 +7,8 @@ import HelloWorld from "./components/HelloWorld.vue";
 import singlePokemon from "./components/SinglePokemon.vue";
 import Login from "./components/Login.vue";
 import Register from "./components/Register.vue";
+import FavouritePokemon from './components/FavouritePokemon.vue';
+
 
 const routes = [
     {path: '/', component: HelloWorld},
@@ -14,6 +16,7 @@ const routes = [
     {path: '/pokemon/:id', component: singlePokemon},
     {path: '/login', component: Login},
     {path: '/register', component: Register},
+    {path: '/favorites', component: FavouritePokemon},
 ]
 
 const router = createRouter ({

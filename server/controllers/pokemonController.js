@@ -3,11 +3,13 @@ import Database from "better-sqlite3";
 async function fresh() {
     let id = 1025;
     const db = new Database('./pokemon.db', {fileMustExist: true});
+    let query1 = "DELETE FROM user_pokemon_favourite";
     let query = "DELETE FROM pokemons";
+    db.exec(query1);
     db.exec(query);
     let count = 0;
     let limit = 1302;
-    // let limit = 1;
+    // let limit = 33;
     const response = await fetch("https://pokeapi.newdeveloper.nl/api/v2/pokemon/?limit=" + limit);
     const pokemon = await response.json();
     const pokemons = [];
@@ -41,6 +43,9 @@ async function fresh() {
             speed: base_stats[5],
             png_url: pngURL
         };
+        if(pokemonData.name.includes("-")){
+            pokemonData.name = pokemonData.name.replace("-", " ")
+        }
         try {
             db.prepare(query).run(pokemonData.name, pokemonData.weight, pokemonData.pokemon_id, pokemonData.base_experience, pokemonData.hp, pokemonData.attack, pokemonData.defense, pokemonData.special_attack, pokemonData.special_defense, pokemonData.speed, pokemonData.png_url);
         } catch (e) {

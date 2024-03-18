@@ -6,8 +6,6 @@
       </div>
       <div class="search-container">
         <input class="search-input" placeholder="Search" v-model="searchText" @keyup="search">
-      </div>
-      <div class="button-container">
         <button @click="prev">Previous</button>
         <button @click="next">Next</button>
       </div>
@@ -22,22 +20,27 @@
           <option value="special_attack">Special attack</option>
           <option value="special_defense">Special defense</option>
         </select>
-      </div>
-      <div>
         <button @click="reverseSort">Reverse sort</button>
+      </div>
+      <div class="button-container loginButton">
+        <button @click="goToLogin">Login</button>
+        <button @click="goToRegister">Register</button>
+      </div>
+      <div class="button-container favoritesButton">
+        <button @click="goToFavorites">Favorites</button>
       </div>
     </div>
 
     <!-- Move the Pokemon cards inside a container -->
     <div class="pokemon-container">
-      <div v-for="pokemon in pokemons" :key="pokemon.pokemon_id" class="pokemon-card"
-           :data-name="pokemon.name" :data-id="pokemon.pokemon_id" :data-weight="pokemon.weight"
-           :data-base-experience="pokemon.base_experience" :data-hp="pokemon.hp" :data-attack="pokemon.attack"
-           :data-defense="pokemon.defense" :data-special-attack="pokemon.special_attack"
-           :data-special-defense="pokemon.special_defense" :data-speed="pokemon.speed">
+      <div v-for="pokemon in pokemons" :key="pokemon.pokemon_id" class="pokemon-card" :data-name="pokemon.name"
+        :data-id="pokemon.pokemon_id" :data-weight="pokemon.weight" :data-base-experience="pokemon.base_experience"
+        :data-hp="pokemon.hp" :data-attack="pokemon.attack" :data-defense="pokemon.defense"
+        :data-special-attack="pokemon.special_attack" :data-special-defense="pokemon.special_defense"
+        :data-speed="pokemon.speed">
         <div>
           <router-link :to="'/pokemon/' + pokemon.id">
-            <img :src="pokemon.png_url" style="width: 250px; height: 250px;">
+            <img class="lazy" :data-src="pokemon.png_url" style="width: 250px; height: 250px;">
           </router-link>
         </div>
         <div>
@@ -49,6 +52,10 @@
 </template>
 
 <script>
+import LazyLoad from "vanilla-lazyload";
+
+const lazyLoadInstance = new LazyLoad({});
+
 export default {
   data() {
     return {
@@ -61,17 +68,26 @@ export default {
     };
   },
   mounted() {
+    if (localStorage.getItem("user_id")) {
+      document.querySelector(".loginButton").style.display = "none"
+    } else {
+      document.querySelector(".favoritesButton").style.display = "none"
+    }
     fetch('http://localhost:3000/api/pokemon/all')
-        .then(response => response.json())
-        .then(data => {
-          this.pokemons = data;
+      .then(response => response.json())
+      .then(data => {
+        this.pokemons = data;
+        this.$nextTick(() => {
+          this.paginationFix();
           this.$nextTick(() => {
-            this.paginationFix(); // Call paginationFix() after the next DOM update
-          });
+            this.direction = localStorage.getItem("reverseSort");
+            this.sort({ value: localStorage.getItem("sortBy") })
+          })
         })
-        .catch(error => {
-          console.error('Error fetching pokemons:', error);
-        });
+      })
+      .catch(error => {
+        console.error('Error fetching pokemons:', error);
+      });
   },
   methods: {
     paginationFix() {
@@ -87,7 +103,7 @@ export default {
           break;
         }
       }
-      console.log(elementList)
+      // console.log(elementList)
       for (const element of elementList) {
         element.style.display = 'none';
       }
@@ -98,6 +114,7 @@ export default {
           break;
         }
       }
+      lazyLoadInstance.update();
     },
     search(e) {
       let elementList = document.querySelectorAll('.pokemon-card');
@@ -146,12 +163,13 @@ export default {
     sort(sortBy) {
       let html = document.querySelectorAll('.pokemon-card');
       let oldHtml = [...html]
-      console.log(sortBy)
       let Sort;
       try {
         Sort = sortBy.target.value
+        localStorage.setItem("sortBy", sortBy.target.value)
       } catch (e) {
         Sort = sortBy.value
+        localStorage.setItem("sortBy", sortBy.value)
       }
       for (const htmlElement of oldHtml) {
         htmlElement.remove();
@@ -163,6 +181,9 @@ export default {
       })
       if (this.direction === true) {
         oldHtml.reverse();
+        localStorage.setItem("reverseSort", true)
+      } else {
+        localStorage.setItem("reverseSort", false)
       }
       for (const htmlElement of oldHtml) {
         document.querySelector('.pokemon-container').appendChild(htmlElement);
@@ -179,6 +200,15 @@ export default {
       }
       this.sort(document.querySelector('select'))
     },
+    goToLogin() {
+      window.location.replace('/login')
+    },
+    goToRegister() {
+      window.location.replace('/register')
+    },
+    goToFavorites() {
+      window.location.replace('/favorites')
+    }
   },
 };
 </script>

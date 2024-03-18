@@ -2,19 +2,84 @@
   <div class="register-container">
     <div class="register-form">
       <h2 style="color: black">Register</h2>
-      <input class="register-input" type="text" placeholder="Username" v-model="username">
-      <input class="register-input" type="email" placeholder="Email" v-model="email">
-      <input class="register-input" type="password" placeholder="Password" v-model="password">
-      <input class="register-input" type="password" placeholder="Confirm Password" v-model="confirmPassword">
-      <button class="register-button" @click="register">Register</button>
+      <form @submit.prevent="register">
+        <input class="register-input" type="text" placeholder="Username" v-model="username">
+        <input class="register-input" type="email" placeholder="Email" v-model="email">
+        <input class="register-input" type="password" placeholder="Password" v-model="password">
+        <input class="register-input" type="password" v-model="passwordRepeat" placeholder="Confirm Password">
+        <button class="register-button">Register</button>
+      </form>
     </div>
   </div>
 </template>
 
 <script>
+import $ from 'jquery';
+
 export default {
-  name: "Register"
-}
+  data() {
+    return {
+      password: '',
+      passwordRepeat: '',
+      username: '',
+      email: '',
+    };
+  },
+  methods: {
+    register() {
+      if (!this.email.includes("@") || !this.email.includes(".")) {
+        alert("Please fill in a email at email")
+        this.email = "";
+        return "failed";
+      }
+
+      if (this.password !== this.passwordRepeat) {
+        alert("The passwords do not match")
+        this.password = "";
+        this.passwordRepeat = "";
+        return "failed;"
+      }
+
+      if (this.password.length <= 5) {
+        alert("The password atleast has to be 6 characters")
+        this.password = "";
+        this.passwordRepeat = "";
+        return "failed";
+      }
+
+      let data = {
+        name: this.username,
+        email: this.email,
+        password: this.password
+      };
+
+      fetch('http://localhost:3000/api/pokemon/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+      })
+        .then(response => {
+          if (response.ok) {
+            return response.json();
+          } else {
+            throw new Error('Failed to register');
+          }
+        })
+        .then(data => {
+          if (data === "Done") {
+            window.location.href = "http://localhost:5173/login"
+          } else {
+            alert("These do not match our credentials")
+          }
+        })
+        .catch(error => {
+          console.error('Error making POST request:', error);
+        });
+    }
+  }
+};
 </script>
 
 <style scoped>
