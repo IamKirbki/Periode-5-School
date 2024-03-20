@@ -2,12 +2,12 @@ import { createApp } from 'vue'
 import './style.css'
 import App from './App.vue'
 import Pokemon from "./components/Pokemon.vue";
-import {createRouter, createWebHashHistory, createWebHistory} from "vue-router";
 import HelloWorld from "./components/HelloWorld.vue";
 import singlePokemon from "./components/SinglePokemon.vue";
 import Login from "./components/Login.vue";
 import Register from "./components/Register.vue";
 import FavouritePokemon from './components/FavouritePokemon.vue';
+import {createRouter, createWebHashHistory, createWebHistory} from "vue-router";
 
 
 const routes = [
