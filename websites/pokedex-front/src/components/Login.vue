@@ -10,19 +10,23 @@
 </template>
 
 <script>
-import $ from 'jquery';
+import io from "socket.io-client";
 
+const socket = io('http://127.0.0.1:3000');
 export default {
   data() {
     return {
+      email: '',
+      password: ''
     };
   },
   methods: {
     login() {
       const postData = {
-        email: document.getElementById("email").value,
-        password: document.getElementById("password").value,
+        email: this.email,
+        password: this.password
       }
+      console.log(postData);
       
       fetch('http://localhost:3000/api/pokemon/login', {
         method: 'POST',
@@ -39,9 +43,11 @@ export default {
           }
         })
         .then(data => {
+          console.log(data)
           if(data.status === "done"){
             localStorage.setItem("token", data.token)
             localStorage.setItem("user_id", data.user_id)
+            localStorage.setItem("user_name", data.user_name)
             window.location.href = "http://localhost:5173/pokemon"  
           } else {
             alert("These do not match our credentials")

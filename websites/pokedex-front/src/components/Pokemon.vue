@@ -28,6 +28,7 @@
       </div>
       <div class="button-container favoritesButton">
         <button @click="goToFavorites">Favorites</button>
+        <button @click="goToChat">Chat</button>
       </div>
       <div class="button-container loginButton">
         <button @click="logout">Logout</button>
@@ -231,8 +232,12 @@ export default {
     goToFavorites() {
       window.location.replace('/favorites')
     },
+    goToChat() {
+      window.location.replace('/chatroom')
+    },
     logout() {
       localStorage.removeItem("user_id")
+      localStorage.removeItem("user_name")
       localStorage.removeItem("token")
       window.location.reload();
     }

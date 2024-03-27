@@ -7,8 +7,8 @@ import singlePokemon from "./components/SinglePokemon.vue";
 import Login from "./components/Login.vue";
 import Register from "./components/Register.vue";
 import FavouritePokemon from './components/FavouritePokemon.vue';
+import ChatRoom from './components/ChatRoom.vue'
 import {createRouter, createWebHashHistory, createWebHistory} from "vue-router";
-
 
 const routes = [
     {path: '/', component: HelloWorld},
@@ -17,6 +17,7 @@ const routes = [
     {path: '/login', component: Login},
     {path: '/register', component: Register},
     {path: '/favorites', component: FavouritePokemon},
+    {path: '/chatroom', component: ChatRoom},
 ]
 
 const router = createRouter ({

@@ -10,6 +10,8 @@
   },
   "dependencies": {
     "jquery": "^3.7.1",
+    "socket.io": "^4.7.5",
+    "socket.io-client": "^4.7.5",
     "vanilla-lazyload": "^17.8.8",
     "vue": "^3.4.21",
     "vue-router": "^4.3.0"

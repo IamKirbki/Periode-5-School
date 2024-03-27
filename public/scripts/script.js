@@ -54,3 +54,5 @@ let allLinks = {
     "version": "http://pokeapi.newdeveloper.nl/api/v2/version/",
     "version-group": "http://pokeapi.newdeveloper.nl/api/v2/version-group/"
 }
+
+const { Server } = require('socket.io'); 
