@@ -1,22 +1,31 @@
 <template>
 
     <div class="container">
+
         <div class="sidebar">
             <h2>Chats:</h2>
-            <ul class="user-list">
-                <li><button ref="general" @click="toGeneralChat">General</button></li>
+            <ul id="users" class="user-list">
+                <li v-for="ROOM in rooms" @click="changeChat(ROOM)">
+                    <button v-if="room === ROOM" style="background-color: #007bff;">{{ ROOM.includes("-") ?
+                    ROOM.replace(this.username, "").replace('-', '') : ROOM }}</button>
+                    <button v-else style="background-color: #1a1a1a;">{{ ROOM.includes('-') ?
+                    ROOM.replace(this.username, "").replace('-', '') : ROOM }}</button>
+                </li>
             </ul>
         </div>
 
-        <!-- {{ localStorage.getItem('user_name') }} -->
-
         <div class="chat">
             <div id="messages" class="chat-messages">
+                <div v-for="message in messagesshow" @click="createChat(message.sender)">
+                    {{ message.sender }}: {{ message.messageText }}
+                </div>
             </div>
+
             <form @submit="formSubmit" class="message-input">
                 <input v-model="chatMessage" type="text" placeholder="">
                 <button>Send</button>
             </form>
+
         </div>
     </div>
 
@@ -33,53 +42,86 @@ export default {
     data() {
         return {
             chatMessage: '',
+            messages: [],
+            users: [],
+            username: null,
+            rooms: ['general'],
+            room: 'general'
         };
     },
     mounted() {
-        this.toGeneralChat();
+        this.username = localStorage.getItem('user_name');
+        this.$nextTick(() => {
+            this.toGeneralChat();
+        });
     },
     created() {
-        if(localStorage.getItem('user_name') === null) {
+        if (localStorage.getItem('user_name') === null || localStorage.getItem('user_name') === '' || localStorage.getItem('user_name') === undefined){
             window.location.href = "http://localhost:5173/login"
-        }
+        }  
+
         /**
          * socket.on means socket on (event)
          */
+
+        socket.on('clear', () => {
+            this.messages = [];
+        });
+
         socket.on('message', (msg) => {
             let sender = msg.username,
-                messageText = msg.chatMessage
-            const messageDiv = document.createElement('div');
-            if (sender === localStorage.getItem('user_name')) {  
-                messageDiv.classList.add('message', 'chat_self');
-            } else {
-                messageDiv.classList.add('message');
+                messageText = msg.chatMessage,
+                room = msg.room
+
+            this.messages.push({ sender, messageText, room });
+
+            if (room != 'general' && this.rooms.includes(room) === false) {
+                this.createChat(room)
             }
-            messageDiv.innerText = `${sender}: ${messageText}`;
-            messageDiv.onclick = () => {
-                this.changeChat(sender)
-            }
-            messages.appendChild(messageDiv);
-            messages.scrollTo(0, messages.scrollHeight)
-        })
+        });
+    },
+    computed: {
+        messagesshow() {
+            return this.messages.filter((message) => message.room === this.room);
+        }
     },
     methods: {
         formSubmit(e) {
             e.preventDefault();
             let messageObject = {
                 chatMessage: this.chatMessage,
-                username: localStorage.getItem('user_name')
+                username: this.username,
+                room: this.room
+            };
+            if (this.chatMessage === '') {
+                return;
             }
             socket.emit("message", messageObject);
             this.chatMessage = "";
         },
+
         toGeneralChat() {
+            socket.emit("leave", this.room);
             socket.emit("join", "general");
-            this.$refs.general.style.backgroundColor = "#007bff";
+            this.room = 'general';
         },
-        changeChat(user_name) {
-            socket.emit("leave", "general");
-            this.$refs.general.style.backgroundColor = "#333333";
-            socket.emit("join", user_name);
+
+        createChat(targetRoom) {
+            if (targetRoom === null || targetRoom === '' || targetRoom === undefined || this.rooms.includes(targetRoom)) {
+                return;
+            }
+
+            try {
+                this.rooms.push(targetRoom+'-'+this.username);
+            } catch (error) {
+                console.log(error)
+            }
+        },
+
+        changeChat(targetRoom) {
+            socket.emit("leave", this.room);
+            this.room = targetRoom + '-' + this.username;
+            socket.emit("join", this.room);
         }
     }
 }
@@ -103,6 +145,7 @@ body {
     flex: 0 0 20%;
     background-color: #333333;
     padding: 20px;
+    overflow-y: scroll;
 }
 
 .chat {
