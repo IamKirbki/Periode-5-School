@@ -23,12 +23,12 @@
         <button @click="reverseSort">Reverse sort</button>
       </div>
       <div class="button-container loginButton">
-        <button @click="goToLogin">Login</button>
-        <button @click="goToRegister">Register</button>
+        <router-link class="nav-link" :to="`/login`">Login</router-link>
+        <router-link class="nav-link" :to="`/register`">Register</router-link>
       </div>
       <div class="button-container favoritesButton">
-        <button @click="goToFavorites">Favorites</button>
-        <button @click="goToChat">Chat</button>
+        <router-link class="nav-link" :to="`/favorites`">Favorites</router-link>
+        <router-link class="nav-link" :to="`/chatroom`">Chat</router-link>
       </div>
       <div class="button-container loginButton">
         <button @click="logout">Logout</button>
@@ -223,23 +223,10 @@ export default {
       console.log(this.direction)
       this.sort(document.querySelector('select'))
     },
-    goToLogin() {
-      window.location.replace('/login')
-    },
-    goToRegister() {
-      window.location.replace('/register')
-    },
-    goToFavorites() {
-      window.location.replace('/favorites')
-    },
-    goToChat() {
-      window.location.replace('/chatroom')
-    },
     logout() {
       localStorage.removeItem("user_id")
       localStorage.removeItem("user_name")
       localStorage.removeItem("token")
-      window.location.reload();
     }
   },
 };
@@ -270,7 +257,8 @@ export default {
   align-items: center;
 }
 
-button {
+button,
+.nav-link {
   padding: 10px 20px;
   border-radius: 5px;
   border: none;

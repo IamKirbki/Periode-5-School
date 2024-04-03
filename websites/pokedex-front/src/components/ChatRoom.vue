@@ -1,22 +1,23 @@
 <template>
-
-    <div class="container">
-
+    <div v-if="room != 'gameroom'" class="container">
         <div class="sidebar">
             <h2>Chats:</h2>
             <ul id="users" class="user-list">
-                <li v-for="ROOM in rooms" @click="changeChat(ROOM)">
-                    <button v-if="room === ROOM" style="background-color: #007bff;">{{ ROOM.includes("-") ?
-                    ROOM.replace(this.username, "").replace('-', '') : ROOM }}</button>
-                    <button v-else style="background-color: #1a1a1a;">{{ ROOM.includes('-') ?
-                    ROOM.replace(this.username, "").replace('-', '') : ROOM }}</button>
+                <li v-for="roomName in rooms" @click="this.websocketHandler.changeChat(roomName)">
+                    {{ roomName }}
+                    <button v-if="room === roomName && roomName" style="background-color: #007bff;">
+                        {{ roomName.includes("-") ? roomName.replace(username, "").replace('-', '') : roomName }}
+                    </button>
+                    <button v-else-if="roomName" style="background-color: #1a1a1a;">
+                        {{ roomName.includes('-') ? roomName.replace(username, "").replace('-', '') : roomName }}
+                    </button>
                 </li>
             </ul>
         </div>
 
         <div class="chat">
             <div id="messages" class="chat-messages">
-                <div v-for="message in messagesshow" @click="createChat(message.sender)">
+                <div v-for="message in messagesshow" @click="this.websocketHandler.createChat(message.sender)">
                     {{ message.sender }}: {{ message.messageText }}
                 </div>
             </div>
@@ -25,18 +26,42 @@
                 <input v-model="chatMessage" type="text" placeholder="">
                 <button>Send</button>
             </form>
-
         </div>
+
+        <div class="sidebar">
+            <h2>Invites:</h2>
+            <ul id="invites" class="invites-list">
+                <li v-for="invite in invites">
+                    <ul class="battle-invite">
+                        <h2>Battle Invitation</h2>
+                        <div class="invite-details">
+                            <p>{{ invite.sender }} has invited you to a battle!</p>
+                        </div>
+                        <div class="invite-actions">
+                            <button @click="this.websocketHandler.acceptedInvite(invite.sender)"
+                                class="accept-button">Accept</button>
+                            <button @click="this.websocketHandler.declinedInvite(invite.sender)"
+                                class="decline-button">Decline</button>
+                        </div>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+
     </div>
 
 </template>
 <script>
 import io from "socket.io-client";
+import websocketHandler from "./../../public/websocketHandler";
+//import SocketConnectectHandler from "./../../public/SocketConnectectHandler";
+import socket from "../../public/SocketConnectHandler";
 
-const socket = io('http://127.0.0.1:3000', {
-    transports: ['websocket', 'polling', 'flashsocket'],
-    auth: { user_name: localStorage.getItem('user_name') }
-});
+
+// const socket = io("http://localhost:3000", {
+//   transports: ["websocket", "polling", "flashsocket"],
+//   auth: { user_name: localStorage.getItem("user_name") },
+// });
 
 export default {
     data() {
@@ -46,39 +71,28 @@ export default {
             users: [],
             username: null,
             rooms: ['general'],
-            room: 'general'
+            room: 'general',
+            invites: [],
+            socket: socket,
+            websocketHandler: null,
         };
     },
     mounted() {
         this.username = localStorage.getItem('user_name');
         this.$nextTick(() => {
-            this.toGeneralChat();
+            this.websocketHandler.toGeneralChat();
+            this.websocketHandler.handleChatMessage();
         });
+        this.websocketHandler = new websocketHandler(socket, this.messages, this.rooms, this.invites, this.username, this.room);
     },
     created() {
-        if (localStorage.getItem('user_name') === null || localStorage.getItem('user_name') === '' || localStorage.getItem('user_name') === undefined){
+        if (localStorage.getItem('user_name') === null || localStorage.getItem('user_name') === '' || localStorage.getItem('user_name') === undefined) {
             window.location.href = "http://localhost:5173/login"
-        }  
+        }
 
         /**
          * socket.on means socket on (event)
          */
-
-        socket.on('clear', () => {
-            this.messages = [];
-        });
-
-        socket.on('message', (msg) => {
-            let sender = msg.username,
-                messageText = msg.chatMessage,
-                room = msg.room
-
-            this.messages.push({ sender, messageText, room });
-
-            if (room != 'general' && this.rooms.includes(room) === false) {
-                this.createChat(room)
-            }
-        });
     },
     computed: {
         messagesshow() {
@@ -96,33 +110,11 @@ export default {
             if (this.chatMessage === '') {
                 return;
             }
+            console.log(this.messages)
             socket.emit("message", messageObject);
             this.chatMessage = "";
         },
 
-        toGeneralChat() {
-            socket.emit("leave", this.room);
-            socket.emit("join", "general");
-            this.room = 'general';
-        },
-
-        createChat(targetRoom) {
-            if (targetRoom === null || targetRoom === '' || targetRoom === undefined || this.rooms.includes(targetRoom)) {
-                return;
-            }
-
-            try {
-                this.rooms.push(targetRoom+'-'+this.username);
-            } catch (error) {
-                console.log(error)
-            }
-        },
-
-        changeChat(targetRoom) {
-            socket.emit("leave", this.room);
-            this.room = targetRoom + '-' + this.username;
-            socket.emit("join", this.room);
-        }
     }
 }
 </script>
@@ -164,6 +156,15 @@ body {
     padding: 0;
 }
 
+.invites-list {
+    list-style-type: none;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
 .user-list li {
     margin-bottom: 10px;
 }
@@ -200,5 +201,45 @@ body {
 
 .message-input button:hover {
     background-color: #0056b3;
+}
+
+.battle-invite {
+    border: 2px solid #4CAF50;
+    border-radius: 5px;
+    padding: 10px;
+    width: 250px;
+    background-color: #444444;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+}
+
+.battle-invite h2 {
+    color: #4CAF50;
+    margin-bottom: 10px;
+}
+
+.invite-details p {
+    margin: 5px 0;
+}
+
+.invite-actions {
+    margin-top: 10px;
+}
+
+.accept-button,
+.decline-button {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    padding: 8px 16px;
+    margin: 0 5px;
+    cursor: pointer;
+}
+
+.accept-button:hover,
+.decline-button:hover {
+    background-color: #45a049;
 }
 </style>

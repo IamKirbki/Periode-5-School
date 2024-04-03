@@ -1,114 +1,135 @@
 import Database from "better-sqlite3";
+import fetch from 'node-fetch';
 
-async function fresh() {
-    let id = 1025;
-    const db = new Database('./pokemon.db', {fileMustExist: true});
-    let query1 = "DELETE FROM user_pokemon_favourite";
-    let query = "DELETE FROM pokemons";
-    db.exec(query1);
-    db.exec(query);
+class PokemonRefresher {
+  constructor() {
+    this.db = new Database('./pokemon.db', {fileMustExist: true});
+    this.limit = 1302; // Default limit
+  }
+
+  async refresh() {
+    const startTimePokemon = performance.now();
     let count = 0;
-    let limit = 1302;
-    // let limit = 33;
-    const response = await fetch("https://pokeapi.newdeveloper.nl/api/v2/pokemon/?limit=" + limit);
-    const pokemon = await response.json();
-    const pokemons = [];
-    console.log("Pokemon Started")
-    let startTimePokemon = performance.now();
-    for (const pokemonElement of pokemon.results) {
-        count++;
-        const response = await fetch(pokemonElement.url);
-        const pokemon = await response.json();
-        let query = "INSERT INTO pokemons (name, weight, pokemon_id, base_experience, hp, attack, defense, special_attack, special_defense, speed, png_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        let stats = pokemon.stats.slice(0, 6);
-        let base_stats = [];
-        let url = pokemonElement.url
-        const apiResponse = await fetch(pokemonElement.url.replace("http://pokeapi.newdeveloper.nl", "https://pokeapi.co"));
-        const API = await apiResponse.json();
-        // console.log(API.sprites)
-        let pngURL = API.sprites.front_default;
-        for (const baseStat of stats) {
-            base_stats.push(baseStat.base_stat)
-        }
-        const pokemonData = {
-            name: pokemon.name,
-            weight: pokemon.weight,
-            pokemon_id: pokemon.id,
-            base_experience: pokemon.base_experience,
-            hp: base_stats[0],
-            attack: base_stats[1],
-            defense: base_stats[2],
-            special_attack: base_stats[3],
-            special_defense: base_stats[4],
-            speed: base_stats[5],
-            png_url: pngURL
-        };
-        if(pokemonData.name.includes("-")){
-            pokemonData.name = pokemonData.name.replace("-", " ")
-        }
-        try {
-            db.prepare(query).run(pokemonData.name, pokemonData.weight, pokemonData.pokemon_id, pokemonData.base_experience, pokemonData.hp, pokemonData.attack, pokemonData.defense, pokemonData.special_attack, pokemonData.special_defense, pokemonData.speed, pokemonData.png_url);
-        } catch (e) {
-            console.log(e)
-        }
 
-        for (const ability of pokemon.abilities) {
-            const response = await fetch(ability.ability.url);
-            const singleAbility = await response.json();
-            let query = "INSERT INTO ability_pokemon (ability_id, pokemon_id) VALUES (?, ?)"
-            try {
-                // console.log(singleAbility.id, pokemonData.pokemon_id)
-                db.prepare(query).run(singleAbility.id, pokemonData.pokemon_id)
-            } catch (e) {
-                console.log(singleAbility.id, pokemonData.pokemon_id)
-                // console.log(pokemon)
-                console.log(e)
-            }
-        }
+    this.clearDatabase();
 
+    console.log("Pokemon Started");
+    
+    const pokemonResponse = await fetch(`https://pokeapi.newdeveloper.nl/api/v2/pokemon/?limit=${this.limit}`);
+    const pokemonData = await pokemonResponse.json();
 
-        if (count % 50 === 0) {
-            let percentage = (Math.round(((count / limit * 100) + Number.EPSILON) * 100) / 100)
-            const currentTime = performance.now();
-            let timeWasted = currentTime - startTimePokemon
-            console.log("Pokemon at " + percentage + "% - " + Math.round(timeWasted) + "ms")
-            let timeLeft = Math.round(((timeWasted / count) * limit) - timeWasted)
-            console.log(formatMilliseconds(timeLeft) + " left")
-        } else if (count === limit) {
-            const currentTime = performance.now();
-            let percentage = (Math.round(((count / limit * 100) + Number.EPSILON) * 100) / 100)
-            let timeWasted = currentTime - startTimePokemon
-            console.log("Pokemon at " + percentage + "% - " + Math.round(timeWasted) + "ms")
-        }
-        // console.log(pokemon.name)
-        pokemons.push(pokemon);
+    for (const pokemonElement of pokemonData.results) {
+      count++;
 
+      const singlePokemonResponse = await fetch(pokemonElement.url);
+      const singlePokemon = await singlePokemonResponse.json();
+
+      this.insertPokemon(singlePokemon, startTimePokemon, count);
+
+      if (count === this.limit) {
+        this.logCompletion(startTimePokemon, count);
+      }
     }
-    db.close();
-    return pokemons;
-}
 
-function formatMilliseconds(milliseconds) {
+    this.db.close();
+  }
+
+  clearDatabase() {
+    this.db.exec('DELETE FROM user_pokemon_favourite');
+    this.db.exec('DELETE FROM ability_pokemon');
+    this.db.exec('DELETE FROM pokemons');
+  }
+
+  async insertPokemon(pokemon, startTime, count) {
+    const baseStats = pokemon.stats.slice(0, 6).map(stat => stat.base_stat);
+    const apiResponse = await fetch("https://pokeapi.co/api/v2/pokemon/" + pokemon.id);
+    const apiData = await apiResponse.json();
+    const pngURL = apiData.sprites.front_default;
+
+    const pokemonData = {
+      name: pokemon.name.includes("-") ? pokemon.name.replace("-", " ") : pokemon.name,
+      weight: pokemon.weight,
+      pokemon_id: pokemon.id,
+      base_experience: pokemon.base_experience,
+      hp: baseStats[0],
+      attack: baseStats[1],
+      defense: baseStats[2],
+      special_attack: baseStats[3],
+      special_defense: baseStats[4],
+      speed: baseStats[5],
+      png_url: pngURL
+    };
+
+    const query = "INSERT INTO pokemons (name, weight, pokemon_id, base_experience, hp, attack, defense, special_attack, special_defense, speed, png_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+    try {
+      this.db.prepare(query).run(
+        pokemonData.name,
+        pokemonData.weight,
+        pokemonData.pokemon_id,
+        pokemonData.base_experience,
+        pokemonData.hp,
+        pokemonData.attack,
+        pokemonData.defense,
+        pokemonData.special_attack,
+        pokemonData.special_defense,
+        pokemonData.speed,
+        pokemonData.png_url
+      );
+    } catch (e) {
+      console.log(e);
+    }
+
+    for (const ability of pokemon.abilities) {
+      const abilityResponse = await fetch(ability.ability.url);
+      const singleAbility = await abilityResponse.json();
+      const query = "INSERT INTO ability_pokemon (ability_id, pokemon_id) VALUES (?, ?)";
+      try {
+        this.db.prepare(query).run(singleAbility.id, pokemonData.pokemon_id);
+      } catch (e) {
+        console.log(e);
+      }
+    }
+
+    this.logProgress(count, startTime);
+  }
+
+  logProgress(count, startTime) {
+    if (count % 50 === 0 || count === this.limit) {
+      const percentage = (Math.round(((count / this.limit * 100) + Number.EPSILON) * 100) / 100);
+      const currentTime = performance.now();
+      const timeWasted = currentTime - startTime;
+      console.log(`Pokemon at ${percentage}% - ${Math.round(timeWasted)}ms`);
+      const timeLeft = Math.round(((timeWasted / count) * this.limit) - timeWasted);
+      console.log(`${this.formatMilliseconds(timeLeft)} left`);
+    }
+  }
+
+  logCompletion(startTime, count) {
+    const percentage = (Math.round(((count / this.limit * 100) + Number.EPSILON) * 100) / 100);
+    const currentTime = performance.now();
+    const timeWasted = currentTime - startTime;
+    console.log(`Pokemon at ${percentage}% - ${Math.round(timeWasted)}ms`);
+  }
+
+  formatMilliseconds(milliseconds) {
     const hours = Math.floor(milliseconds / (1000 * 60 * 60));
     const minutes = Math.floor((milliseconds % (1000 * 60 * 60)) / (1000 * 60));
     const seconds = Math.floor((milliseconds % (1000 * 60)) / 1000);
 
     let formattedString = "";
     if (hours > 0) {
-        formattedString += hours + " hours ";
+      formattedString += hours + " hours ";
     }
     if (minutes > 0) {
-        formattedString += minutes + " minutes ";
+      formattedString += minutes + " minutes ";
     }
     if (seconds > 0) {
-        formattedString += seconds + " seconds ";
+      formattedString += seconds + " seconds ";
     }
 
     return formattedString.trim();
+  }
 }
 
-const refreshPokemon = () => {
-    return fresh();
-}
-
-export default refreshPokemon;
+export default PokemonRefresher;

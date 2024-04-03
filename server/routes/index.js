@@ -2,9 +2,10 @@ import express from "express";
 import Database from "better-sqlite3";
 import path from "path";
 import { fileURLToPath } from "url";
-import refreshPokemon from "../controllers/pokemonController.js";
-import refreshAbilities from "../controllers/abilityController.js";
+import PokemonRefresher from "../controllers/pokemonController.js";
+import AbilityRefresher from "../controllers/abilityController.js";
 import AuthController from "../controllers/authController.js";
+import freshMoves from "../controllers/moveController.js";
 import passport from "passport";
 
 var router = express.Router();
@@ -129,15 +130,17 @@ router.post("/login/attempt", AuthController.login);
 
 router.post("/register/attempt", AuthController.register);
 
-router.post("/refresh", function (req, res, next) {
-  // new pokemonSearchController();
-  refreshAbilities().then((value) => {
-    refreshPokemon();
-  });
+router.post("/refresh", async function (req, res, next) {
   res.send(
     "Het is bezig, zie de console voor hoe ver die is, " +
       "als hij niet bezig lijkt is die dat waarschijnlijk wel"
   );
+  let abilities = new AbilityRefresher();
+  // await abilities.refresh();
+  let moves = new freshMoves(); 
+  // await moves.refresh();
+  let pokemon = new PokemonRefresher();   
+  pokemon.refresh()
 });
-
 export default router;
+   

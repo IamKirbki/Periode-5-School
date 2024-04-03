@@ -1,46 +1,69 @@
 import Database from "better-sqlite3";
+class AbilityRefresher {
+  constructor() {
+    this.db = new Database('./pokemon.db', {fileMustExist: true});
+    this.limit = 367; // Default limit
+    this.count = 0;
+    this.startTimeAbilities = performance.now();
+  }
 
-async function fresh() {
-    let limit = 367;
-    // let limit = 10;
-    let count = 0;
-    const db = new Database('./pokemon.db', {fileMustExist: true});
-    db.prepare('DELETE FROM ability_pokemon').run();
-    let query = "DELETE FROM abilities";
-    db.exec(query);
-    const response = await fetch("https://pokeapi.newdeveloper.nl/api/v2/ability/?limit="+limit);
-    const ability = await response.json();
-    const abilities = [];
-    console.log("Abilities Started")
-    let startTimeAbilities = performance.now();
-    for (const ability1 of ability.results) {
-        count++;
-        const response = await fetch(ability1.url);
-        const singleAbility = await response.json();
-        let query = "INSERT INTO abilities (name, ability_id) VALUES (?, ?)"
-        try {
-            db.prepare(query).run(singleAbility.name, singleAbility.id);
-        } catch (e) {
-            console.log(e)
-        }
-        if (count % 50 === 0) {
-            let percentage = (Math.round(((count / limit * 100) + Number.EPSILON) * 100) / 100)
-            const currentTime = performance.now();
-            let timeWasted = currentTime - startTimeAbilities
-            console.log("Abilities at " + percentage + "% - " + Math.round(timeWasted) + "ms")
-            let timeLeft = Math.round(((timeWasted / count) * limit) - timeWasted)
-            console.log(formatMilliseconds(timeLeft) + " left")
-        } else if(count === limit){
-            const currentTime = performance.now();
-            let percentage = (Math.round(((count / limit * 100) + Number.EPSILON) * 100) / 100)
-            let timeWasted = currentTime - startTimeAbilities
-            console.log("Abilities at " + percentage + "% - " + Math.round(timeWasted) + "ms")
-        }
-        abilities.push(singleAbility);
+  async refresh() {
+    this.clearDatabase();
+
+    console.log("Abilities Started");
+
+    const abilityResponse = await fetch(`https://pokeapi.newdeveloper.nl/api/v2/ability/?limit=${this.limit}`);
+    const abilitiesData = await abilityResponse.json();
+
+    for (const abilityData of abilitiesData.results) {
+      this.count++;
+
+      const singleAbilityResponse = await fetch(abilityData.url);
+      const singleAbility = await singleAbilityResponse.json();
+
+      this.insertAbility(singleAbility.name, singleAbility.id);
+
+      this.logProgress();
+
+      if (this.count === this.limit) {
+        this.logCompletion();
+      }
     }
-    return abilities
-}
-function formatMilliseconds(milliseconds) {
+  }
+
+  clearDatabase() {
+    this.db.prepare('DELETE FROM ability_pokemon').run();
+    this.db.prepare('DELETE FROM abilities').run();
+  }
+
+  insertAbility(name, id) {
+    let query = "INSERT INTO abilities (name, ability_id) VALUES (?, ?)";
+    try {
+      this.db.prepare(query).run(name, id);
+    } catch (e) {
+      console.log(e);
+    }
+  }
+
+  logProgress() {
+    if (this.count % 50 === 0 || this.count === this.limit) {
+      let percentage = (Math.round(((this.count / this.limit * 100) + Number.EPSILON) * 100) / 100);
+      const currentTime = performance.now();
+      let timeWasted = currentTime - this.startTimeAbilities;
+      console.log(`Abilities at ${percentage}% - ${Math.round(timeWasted)}ms`);
+      let timeLeft = Math.round(((timeWasted / this.count) * this.limit) - timeWasted);
+      console.log(`${this.formatMilliseconds(timeLeft)} left`);
+    }
+  }
+
+  logCompletion() {
+    const currentTime = performance.now();
+    let percentage = (Math.round(((this.count / this.limit * 100) + Number.EPSILON) * 100) / 100);
+    let timeWasted = currentTime - this.startTimeAbilities;
+    console.log(`Abilities at ${percentage}% - ${Math.round(timeWasted)}ms`);
+  }
+
+  formatMilliseconds(milliseconds) {
     const hours = Math.floor(milliseconds / (1000 * 60 * 60));
     const minutes = Math.floor((milliseconds % (1000 * 60 * 60)) / (1000 * 60));
     const seconds = Math.floor((milliseconds % (1000 * 60)) / 1000);
@@ -57,11 +80,7 @@ function formatMilliseconds(milliseconds) {
     }
 
     return formattedString.trim();
+  }
 }
 
-
-const refreshAbilities = () => {
-    return fresh();
-}
-
-export default refreshAbilities;
+export default AbilityRefresher;

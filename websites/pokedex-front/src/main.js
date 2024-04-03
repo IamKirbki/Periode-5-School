@@ -10,6 +10,8 @@ import FavouritePokemon from './components/FavouritePokemon.vue';
 import ChatRoom from './components/ChatRoom.vue'
 import {createRouter, createWebHashHistory, createWebHistory} from "vue-router";
 
+import SocketConnectHandler from '../public/SocketConnectHandler';
+
 const routes = [
     {path: '/', component: HelloWorld},
     {path: '/pokemon', component: Pokemon},
