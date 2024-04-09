@@ -3,12 +3,12 @@
         <div class="sidebar">
             <h2>Chats:</h2>
             <ul id="users" class="user-list">
-                <li v-for="roomName in rooms" @click="this.websocketHandler.changeChat(roomName)">
-                    {{ roomName }}
-                    <button v-if="room === roomName && roomName" style="background-color: #007bff;">
+                <li v-for="roomName in rooms" @click="changeRoom(roomName)">
+                    <!-- {{ roomName }} -->
+                    <button v-if="room === roomName && roomName && roomName != 'gameroom'" style="background-color: #007bff;">
                         {{ roomName.includes("-") ? roomName.replace(username, "").replace('-', '') : roomName }}
                     </button>
-                    <button v-else-if="roomName" style="background-color: #1a1a1a;">
+                    <button v-else-if="roomName && roomName != 'gameroom'" style="background-color: #1a1a1a;">
                         {{ roomName.includes('-') ? roomName.replace(username, "").replace('-', '') : roomName }}
                     </button>
                 </li>
@@ -38,7 +38,7 @@
                             <p>{{ invite.sender }} has invited you to a battle!</p>
                         </div>
                         <div class="invite-actions">
-                            <button @click="this.websocketHandler.acceptedInvite(invite.sender)"
+                            <button @click="this.websocketHandler.acceptInvite(invite.sender, this.user_name)"
                                 class="accept-button">Accept</button>
                             <button @click="this.websocketHandler.declinedInvite(invite.sender)"
                                 class="decline-button">Decline</button>
@@ -52,17 +52,9 @@
 
 </template>
 <script>
-import io from "socket.io-client";
 import websocketHandler from "./../../public/websocketHandler";
-//import SocketConnectectHandler from "./../../public/SocketConnectectHandler";
 import socket from "../../public/SocketConnectHandler";
-
-
-// const socket = io("http://localhost:3000", {
-//   transports: ["websocket", "polling", "flashsocket"],
-//   auth: { user_name: localStorage.getItem("user_name") },
-// });
-
+// console.log(socket)
 export default {
     data() {
         return {
@@ -83,6 +75,7 @@ export default {
             this.websocketHandler.toGeneralChat();
             this.websocketHandler.handleChatMessage();
         });
+
         this.websocketHandler = new websocketHandler(socket, this.messages, this.rooms, this.invites, this.username, this.room);
     },
     created() {
@@ -96,7 +89,7 @@ export default {
     },
     computed: {
         messagesshow() {
-            return this.messages.filter((message) => message.room === this.room);
+            return this.messages.filter((message) => message.msgRoom === this.room);
         }
     },
     methods: {
@@ -104,9 +97,9 @@ export default {
             e.preventDefault();
             let messageObject = {
                 chatMessage: this.chatMessage,
-                username: this.username,
                 room: this.room
             };
+            console.log(messageObject)
             if (this.chatMessage === '') {
                 return;
             }
@@ -114,6 +107,10 @@ export default {
             socket.emit("message", messageObject);
             this.chatMessage = "";
         },
+        changeRoom(room) {
+            this.room = room;
+            this.websocketHandler.changeChat(room);
+        }
 
     }
 }

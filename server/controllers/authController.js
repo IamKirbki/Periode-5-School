@@ -68,7 +68,7 @@ class AuthController {
         const email = req.body.email;
         const password = req.body.password;
 
-        console.log(req.body.password)
+        // console.log(req.body.password)
 
         let db = new Database('./pokemon.db', {fileMustExist: true});
         let userDB = db.prepare("SELECT * FROM users WHERE email = ?").get(email);
@@ -82,9 +82,8 @@ class AuthController {
             let token = await jsonwebtoken.sign(
                 {email: userDB.email},
                 'PVnWTWRGHqMnw9mXG3E2KCY8E4U1LYswHaiNefnJXUZrd2NbMkaDClgdDZagnHkpgwWRbJ7ZxkEmdv1N/8TMVxkUDC+BpUjOdeDZ4ILLivWuKYlcpTVc+9N9vNNuko1/w+NgCSjxqArTY6H+iOKM/pHLyc3D1tiiYRdkQnADHVnvkbulsBkNQYkt9qKGg7H2S+Hqo5ofpytVLE31QxubmH9Oz30XL6IWCnGLqNflU4wVCNNta25Z24CsaZSIPqvPpPJ5+/35IhPLy8dXFUMhWuUhJp8O4hEuAPGabeBrZ72Bd0YxEkxxpnDV/OQAxyCziuFtJzO3Ai92MBAaR8oK6g==',
-                {expiresIn: "1h"}
+                {expiresIn: "100d"}
             )
-            console.log("sbahdsbajh")
             res.json({ token: token, user_id: userDB.id, user_name: userDB.name, status: "done"});
         } else {
             res.json({ token: null, user_id: null, user_name: null, status: "Not done"});

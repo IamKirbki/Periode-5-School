@@ -1,41 +1,50 @@
+import router from "../src/main.js";
 class websocketHandler {
-  constructor(socket, msgs, rooms, invites, username, currentRoom) {
-    this.connections = [];
-    this.messages = msgs;
+  constructor(socket, messages, rooms, invites, username, room) {
+    this.messages = messages;
     this.invites = invites;
     this.socket = socket;
     this.rooms = rooms;
     this.username = username;
-    this.room = currentRoom;
+    this.room = room;
+    this.router = router;
   }
+
   //TODO: fix the websocketHandler to work with the new file structure
   //TIP: add this. to the variables that are not defined in the constructor
+
   handleChatMessage() {
     this.socket.on("message", (msg) => {
       let sender = msg.username,
         messageText = msg.chatMessage,
-        room = msg.room;
+        msgRoom = msg.room;
 
-      if (!this.rooms.includes(msg.room)) {
-        this.rooms.push(msg.room);
+      if (!this.rooms.includes(msgRoom) && msgRoom != "gameroom") {
+        this.rooms.push(msgRoom);
       }
 
-      this.messages.push({ sender, messageText, room });
+      if (msgRoom != "gameroom") {
+        this.messages.push({ sender, messageText, msgRoom });
+        return
+      }
 
-      if (
-        room != "general" &&
-        this.rooms.includes(room) === false &&
-        room != "gameroom"
-      ) {
-        this.createChat(room);
-      } else {
+      if (msgRoom === "gameroom") {
         this.createInvite(msg);
+      } else if (
+        msgRoom != "general" &&
+        msgRoom != "gameroom" &&
+        !this.rooms.includes(msgRoom)
+      ) {
+        this.createChat(msgRoom);
       }
     });
+    this.socket.on("acceptedInvite", (inviteReceiver, inviteSender) => {
+      this.acceptedInvite(inviteReceiver, inviteSender);
+    })
   }
 
   createInvite(msg) {
-    if (msg.room === "gameroom" && this.invites.includes(msg) === false) {
+    if (msg.room === "gameroom" && !this.invites.includes(msg)) {
       this.invites.push(msg);
     }
   }
@@ -45,6 +54,8 @@ class websocketHandler {
       return;
     }
 
+    targetRoom = targetRoom + "-" + this.username;
+
     try {
       this.rooms.push(targetRoom);
     } catch (error) {
@@ -52,12 +63,27 @@ class websocketHandler {
     }
   }
 
-  acceptedInvite(sender) {
+  acceptedInvite(inviteReceiver, inviteSender) {
     this.invites = [];
-    this.socket.emit("leave", this.room);
-    this.socket.emit("join", "gameroom");
-    this.room = "gameroom";
+    this.router.push("/battle");
+    localStorage.setItem("opponent", inviteReceiver);
   }
+
+  acceptInvite(inviteSender, inviteReceiver) {
+    this.invites = [];
+    let username = this.getUsername();
+    this.router.push("/battle");
+    localStorage.setItem("opponent", inviteSender);
+    this.socket.emit("acceptInvite", username, inviteSender);
+  }
+
+  getUsername() {
+    this.socket.emit("getUsername");
+    this.socket.on("sendUsername", (username) => {
+      this.username = username;
+    });
+    return this.username;
+  };
 
   declinedInvite(sender) {
     this.invites
@@ -81,10 +107,9 @@ class websocketHandler {
 
   clear() {
     this.socket.on("clear", () => {
-      this.messages = [];
+      this.messages.splice(0, this.messages.length);
     });
   }
-
 }
 
 export default websocketHandler;

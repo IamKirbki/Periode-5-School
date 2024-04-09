@@ -227,6 +227,7 @@ export default {
       localStorage.removeItem("user_id")
       localStorage.removeItem("user_name")
       localStorage.removeItem("token")
+      document.location.reload()
     }
   },
 };
