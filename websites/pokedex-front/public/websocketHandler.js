@@ -1,6 +1,6 @@
 import router from "../src/main.js";
 class websocketHandler {
-  constructor(socket, messages, rooms, invites, username, room) {
+  constructor(socket, messages, rooms, invites, username, room, opponentReady) {
     this.messages = messages;
     this.invites = invites;
     this.socket = socket;
@@ -25,7 +25,7 @@ class websocketHandler {
 
       if (msgRoom != "gameroom") {
         this.messages.push({ sender, messageText, msgRoom });
-        return
+        return;
       }
 
       if (msgRoom === "gameroom") {
@@ -40,7 +40,7 @@ class websocketHandler {
     });
     this.socket.on("acceptedInvite", (inviteReceiver, inviteSender) => {
       this.acceptedInvite(inviteReceiver, inviteSender);
-    })
+    });
   }
 
   createInvite(msg) {
@@ -83,7 +83,7 @@ class websocketHandler {
       this.username = username;
     });
     return this.username;
-  };
+  }
 
   declinedInvite(sender) {
     this.invites

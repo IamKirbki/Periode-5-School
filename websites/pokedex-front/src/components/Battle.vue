@@ -1,22 +1,66 @@
 <template>
-    <div class="buttons">
-        <button @click="openModal">Select Pokemon</button>
-        <button @click="ready">Ready up!</button>
+    <div v-if="!(opponentReady && playerReady)" class="buttons">
+        <button :style="playerReady ? 'cursur: not-allowed;' : 'cursur: pointer'" @click="openModal">Select
+            Pokemon</button>
+        <p v-if="opponentReady">The opponent is ready!</p>
+        <button :style="playerReady ? 'background-color: green' : ''" @click="ready">Ready up!</button>
     </div>
-    <div class="pokemon-selector">
+    <div v-if="!(opponentReady && playerReady)" class="pokemon-selector">
         <div class="modal" :class="{ 'is-active': showModal }">
             <div class="modal-background" @click="closeModal"></div>
             <div class="modal-content">
                 <h2 @click="closeModal" style="cursor: pointer;">Close</h2>
                 <h2>Select a Pokemon</h2>
+                <input type="text" placeholder="pokemon" @keyup="search"></input>
                 <div class="pokemon-list">
-                    <div v-for="pokemon in pokemons" :key="pokemon.id" @click="addPokemon(pokemon)">
+                    <div v-for="pokemon in pokemons" :key="pokemon.id" @click="addPokemon(pokemon)"
+                        v-show="!pokemon.isHidden">
                         <img :src="pokemon.png_url" alt="Pokemon" />
-                        <p>{{ pokemon.name }}</p>
+                        <p>{{ firstCharUppercase(pokemon.name) }}</p>
                     </div>
                 </div>
             </div>
             <button class="modal-close is-large" aria-label="close" @click="closeModal"></button>
+        </div>
+    </div>
+    <div v-if="(opponentReady && playerReady)">
+        <h1 v-if="this.selectedPokemon.every(pokemon => pokemon.dead)">You lost!</h1>
+        <h1 v-if="this.opponentPokemon.every(pokemon => pokemon.dead)">You won!</h1>
+        <div class="battlefield">
+            <div class="player">
+                <h2 :style="{ color: turn === username ? 'green' : '' }">{{ firstCharUppercase(username) }}</h2>
+                <div class="pokemon-list">
+                    <div v-for="pokemon in selectedPokemon"
+                        :style="{ cursur: turn === username && toSelect === 'pokemon' || selectedSinglePokemon === pokemon.name ? 'pointer' : '', border: pokemon.name === selectedSinglePokemon && !(this.selectedPokemon.every(pokemon => pokemon.dead)) ? '2px solid green' : '' }"
+                        @click="handleBattleClick(pokemon.name)" :key="pokemon.id">
+                        <img :style="{ filter: pokemon.dead ? 'grayscale(100%)' : '' }" :src="pokemon.png_url"
+                            alt="Pokemon" />
+                        <p>{{ pokemon.name != "snorlax" ? firstCharUppercase(pokemon.name) : "Fatass" }}</p>
+                        <div class="health-bar">
+                            <div class="health-bar-inner"
+                                :style="{ width: ((pokemon.hp / pokemon.maxHp) * 100) + '%', backgroundColor: (pokemon.hp / pokemon.maxHp) < 0.3 ? 'red' : (pokemon.hp / pokemon.maxHp) < 0.6 ? 'orange' : '' }">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="opponent">
+                <h2 :style="{ color: turn === opponent ? 'green' : '' }">{{ firstCharUppercase(opponent) }}</h2>
+                <div class="pokemon-list">
+                    <div v-for="pokemon in opponentPokemon"
+                        :style="{ cursur: turn === username && toSelect === 'attack' ? 'pointer' : '' }"
+                        @click="handleBattleClick(pokemon.name)" :key="pokemon.id">
+                        <img :style="{ filter: pokemon.dead ? 'grayscale(100%)' : '' }" :src="pokemon.png_url"
+                            alt="Pokemon" />
+                        <p>{{ firstCharUppercase(pokemon.name) }}</p>
+                        <div class="health-bar">
+                            <div class="health-bar-inner"
+                                :style="{ width: ((pokemon.hp / pokemon.maxHp) * 100) + '%', backgroundColor: (pokemon.hp / pokemon.maxHp) < 0.3 ? 'red' : (pokemon.hp / pokemon.maxHp) < 0.6 ? 'orange' : '' }">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </template>
@@ -38,13 +82,19 @@ export default {
             invites: [],
             room: '',
             pokemons: [],
+            opponentPokemon: [],
             pokemonElements: [],
-            selectedPokemons: [],
+            selectedPokemon: [],
             showModal: false,
             perPage: 1302,
             page: 1,
             direction: false,
             opponentReady: false,
+            playerReady: false,
+            notallowed: false,
+            turn: "",
+            selectedSinglePokemon: "",
+            toSelect: "pokemon",
         }
     },
     mounted() {
@@ -55,7 +105,24 @@ export default {
             router.push('/pokemon')
         }
 
-        this.websocketHandler = new websocketHandler(socket, this.messages, this.rooms, this.invites, this.username, this.room);
+        socket.on("opponentReady", (opponent, pokemon) => {
+            this.opponentReady = true;
+            this.opponentPokemon = pokemon;
+        });
+        socket.on("opponentUnready", (opponent) => {
+            this.opponentReady = false;
+        });
+        socket.on("start", () => {
+            this.turn = this.username;
+        })
+        socket.on("wait", () => {
+            this.turn = this.opponent;
+        })
+        socket.on("damage", (pokemonName, damage) => {
+            this.handleDamageSocket(pokemonName, damage)
+        })
+
+        this.websocketHandler = new websocketHandler(socket, this.messages, this.rooms, this.invites, this.username, this.room, this.opponentReady);
 
         this.username = this.websocketHandler.getUsername()
 
@@ -81,16 +148,9 @@ export default {
                 console.error('Error fetching pokemons:', error);
             });
 
-        socket.on("opponentReady", () => {
-            this.opponentReady = true;
-        })
-
-        socket.on("opponentUnready", () => {
-            this.opponentReady = false;
-        })
-
-        console.log(this.opponent)
-        console.log(this.username)
+            document.addEventListener("unload", (e) => {
+                localStorage.removeItem("opponent")
+            })
     },
     created() {
 
@@ -100,17 +160,72 @@ export default {
     },
     methods: {
         addPokemon(pokemon) {
-            if (this.selectedPokemons.length <= 6 && this.selectedPokemons.filter(p => p.id === pokemon.id).length === 0) {
+            if (this.selectedPokemon.length <= 6 && this.selectedPokemon.filter(p => p.id === pokemon.id).length === 0) {
                 pokemon.username = this.username;
                 this.pokemonElements[pokemon.id - 1].style.border = 'green 2px solid';
-                this.selectedPokemons.push(pokemon);
-                if (this.selectedPokemons.length === 6) {
+                let pokemonAdd = pokemon;
+                pokemonAdd.maxHp = pokemon.hp;
+                pokemonAdd.dead = false;
+                this.selectedPokemon.push(pokemonAdd);
+                if (this.selectedPokemon.length === 6) {
                     this.closeModal();
                     // socket.emit("teamSelected")
                 }
-            } else if (this.selectedPokemons.filter(p => p.id === pokemon.id).length > 0) {
+            } else if (this.selectedPokemon.filter(p => p.id === pokemon.id).length > 0) {
                 this.pokemonElements[pokemon.id - 1].style.border = '#525252 2px solid';
-                this.selectedPokemons = this.selectedPokemons.filter(p => p.id !== pokemon.id);
+                this.selectedPokemon = this.selectedPokemon.filter(p => p.id !== pokemon.id);
+            }
+        },
+        handleBattleClick(pokemonName) {
+            if (this.turn === this.username) {
+                if (this.toSelect === "pokemon") {
+                    this.selectedSinglePokemon = pokemonName
+                    this.toSelect = "attack";
+                } else if (pokemonName === this.selectedSinglePokemon) {
+                    this.toSelect = "pokemon";
+                    this.selectedSinglePokemon = "";
+                } else if (this.toSelect === "attack") {
+                    this.attack(pokemonName)
+                    this.selectedSinglePokemon = ""
+                    this.toSelect = "pokemon";
+                }
+            } else {
+                return;
+            }
+        },
+        attack(pokemonName) {
+            let attacker = this.selectedSinglePokemon;
+            if (this.selectedPokemon.filter(p => p.name === attacker)[0].dead) {
+                return;
+            }
+            let detailedAttacker = this.pokemons.filter(p => p.name === attacker)[0];
+            let defender = this.opponentPokemon.filter(p => p.name === pokemonName)[0];
+            let detailedDefender = this.pokemons.filter(p => p.name === pokemonName)[0];
+            let damage = Math.round(((2 * 1500 + 10) / 250) *
+                (detailedAttacker.attack / detailedDefender.defense) +
+                2);
+            this.handleDamage(pokemonName, damage)
+            socket.emit("damage", pokemonName, damage, this.opponent)
+        },
+        handleDamage(pokemonName, damage) {
+            let defender = this.opponentPokemon.filter(p => p.name === pokemonName)[0];
+            if (defender.hp < damage) {
+                defender.hp = 0;
+                defender.dead = true;
+            } else {
+                defender.hp = defender.hp - damage;
+            }
+        },
+        handleDamageSocket(pokemonName, damage) {
+            let defender = this.selectedPokemon.filter(p => p.name === pokemonName)[0];
+            if (defender.hp < damage) {
+                defender.hp = 0;
+                defender.dead = true;
+                if(this.opponentPokemon.every(pokemon => pokemon.dead) || this.selectedPokemon.every(pokemon => pokemon.dead) ) {
+                    end()
+                }
+            } else {
+                defender.hp = defender.hp - damage
             }
         },
         openModal() {
@@ -122,68 +237,57 @@ export default {
         closeModal() {
             this.showModal = false;
         },
-        paginationFix() {
-            let elementList = document.querySelectorAll('.pokemon-list>div');
-            let filteredElementList = [];
-            for (const element of elementList) {
-                if (element.dataset['isHidden']) {
-                    if (element.dataset['isHidden'] === "false") {
-                        filteredElementList.push(element);
-                    }
+        search(e) {
+            let searchValue = e.target.value.toLowerCase();
+            for (const pokemon of this.pokemons) {
+                if (pokemon.name.toLowerCase().includes(searchValue)) {
+                    pokemon.isHidden = false;
                 } else {
-                    filteredElementList = elementList;
-                    break;
+                    pokemon.isHidden = true;
+                }
+                if (searchValue === "") {
+                    pokemon.isHidden = false;
                 }
             }
-            for (const element of elementList) {
-                element.style.display = 'none';
+            if (searchValue === "") {
+                this.page = 1;
+                this.paginationFix();
             }
-            for (let i = this.perPage * (this.page - 1); i < this.perPage * this.page; i++) {
-                if (filteredElementList[i]) {
-                    filteredElementList[i].style.display = 'inherit';
-                } else {
-                    break;
-                }
-            }
-            lazyLoadInstance.update();
+            lazyLoadInstance.update()
+        },
+        firstCharUppercase(string) {
+            return string.charAt(0).toUpperCase() + string.slice(1);
         },
         search(e) {
-            let elementList = document.querySelectorAll('.pokemon-list>div');
-            for (const element of elementList) {
-                if (element.lastChild.textContent.includes(e.target.value)) {
-                    element.dataset['isHidden'] = "false";
-                    element.style.display = 'inherit';
+            let searchValue = e.target.value.toLowerCase();
+            for (const pokemon of this.pokemons) {
+                if (pokemon.name.toLowerCase().includes(searchValue)) {
+                    pokemon.isHidden = false;
                 } else {
-                    element.style.display = 'none';
-                    element.dataset['isHidden'] = "true";
+                    pokemon.isHidden = true;
                 }
-                if (e.target.value === "") {
-                    element.style.display = 'inherit';
-                    delete element.dataset['isHidden'];
+                if (searchValue === "") {
+                    pokemon.isHidden = false;
                 }
             }
-            if (e.target.value === "") {
+            if (searchValue === "") {
                 this.page = 1;
                 this.paginationFix();
             }
         },
         ready() {
-            if (this.selectedPokemons.length === 6) {
-                //socket.emit("teamSelected", this.selectedPokemons);
-                if (document.querySelector('.buttons button:last-child').style.backgroundColor === 'green') {
-                    document.querySelector('.buttons button:last-child').style.backgroundColor = '#333333'
-                    document.querySelector('.buttons button:first-child').style.cursor = 'pointer';
-                    this.notallowed = false;
-                    socket.emit("unready", this.opponent)
-                    return;
-                }
-                document.querySelector('.buttons button:last-child').style.backgroundColor = 'green';
-                document.querySelector('.buttons button:first-child').style.cursor = 'not-allowed';
-                this.notallowed = true;
-                socket.emit("ready", this.opponent, this.selectedPokemons)
+            if (this.selectedPokemon.length > 0) {
+                this.notallowed = !this.notallowed;
+                this.playerReady = !this.playerReady;
+                this.playerReady ? socket.emit("ready", this.opponent, this.selectedPokemon) : socket.emit("unready", this.opponent);
             } else {
-                alert('Please select 6 pokemons before readying up!')
+                alert('Please select 6 pokemons before readying up!');
             }
+        },
+        end(){
+            setTimeout(() => {
+                localStorage.removeItem("opponent")
+            }, 5000)
         }
     }
 }
@@ -267,5 +371,39 @@ export default {
 
 .buttons button:hover {
     background-color: #525252;
+}
+
+.battlefield {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+}
+
+.player {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border: #888, 2px solid;
+}
+
+.opponent {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border: #888, 2px solid;
+}
+
+.health-bar {
+    width: 100%;
+    height: 20px;
+    background-color: #333333;
+    border-radius: 5px;
+    margin-top: 5px;
+}
+
+.health-bar-inner {
+    height: 100%;
+    background-color: #4CAF50;
+    border-radius: 5px;
 }
 </style>

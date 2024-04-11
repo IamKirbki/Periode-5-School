@@ -11,6 +11,7 @@ class websocketController {
   messages = [];
   user_name;
   io;
+  readyPlayers = [];
   constructor(server) {
     this.io = new Server(server, {
       cors: {
@@ -51,24 +52,47 @@ class websocketController {
       });
 
       socket.on("ready", (opponent, opponentPokemon) => {
-        let opponentSocket = this.connections.find(
-          (connection) => connection.user_name === opponent
+        let opponentSocket = this.findOpponent(opponent)
+        const opponentExists = this.readyPlayers.some(
+          (player) =>
+            player.opponent === opponentSocket.socket.request.user.name
         );
-        opponentSocket.socket.emit("opponentReady", socket.request.user.name, opponentPokemon);
+        if (opponentExists) {
+          if (Math.random() < 0.5) {
+            socket.emit("start");
+            opponentSocket.socket.emit("wait");
+          } else {
+            socket.emit("wait");
+            opponentSocket.socket.emit("start");
+          }
+        } else {
+          this.readyPlayers.push({
+            player: socket.request.user.name,
+            opponent: opponent,
+          });
+        }
+        opponentSocket.socket.emit(
+          "opponentReady",
+          socket.request.user.name,
+          opponentPokemon
+        );
       });
 
-      socket.on("undready", (opponent) => {
-        let opponentSocket = this.connections.find(
-          (connection) => connection.user_name === opponent
-        );
-        opponentSocket.socket.emit("opponentUndready");
+      socket.on("damage", (pokemonName, damage, opponent) => {
+        let opponentSocket = this.findOpponent(opponent)
+        opponentSocket.socket.emit("damage", pokemonName, damage, opponent);
+        opponentSocket.socket.emit("start");
+        socket.emit("wait");
+      });
+
+      socket.on("unready", (opponent) => {
+        let opponentSocket = this.findOpponent(opponent)
+        opponentSocket.socket.emit("opponentUnready", socket.request.user.name);
       });
 
       socket.on("start", (opponent) => {
         socket.send("start");
-        let opponentSocket = this.connections.find(
-          (connection) => connection.user_name === opponent
-        );
+        let opponentSocket = this.findOpponent(opponent)
         opponentSocket.socket.send("start");
       });
 
@@ -76,8 +100,20 @@ class websocketController {
         let senderSocket = this.connections.find(
           (connection) => connection.user_name === inviteSender
         );
-        senderSocket.socket.emit("acceptedInvite", inviteReceiver, inviteSender);
-      })
+        console.log(
+          "inviteReceiver: " +
+            inviteReceiver +
+            " inviteSender: " +
+            inviteSender +
+            " senderSocket: " +
+            senderSocket.user_name
+        );
+        senderSocket.socket.emit(
+          "acceptedInvite",
+          inviteReceiver,
+          inviteSender
+        );
+      });
 
       for (let index = 0; index < this.messages.length; index++) {
         if (
@@ -168,6 +204,12 @@ class websocketController {
         this.io.in(message.room).emit("message", message);
       });
     });
+  }
+
+  findOpponent(opponent) {
+    return this.connections.find(
+      (connection) => connection.user_name === opponent
+    );
   }
 
   addConnection(socket) {

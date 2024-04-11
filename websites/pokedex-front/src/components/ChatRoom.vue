@@ -1,11 +1,13 @@
 <template>
     <div v-if="room != 'gameroom'" class="container">
         <div class="sidebar">
+            <button @click="goBackToPokemons">Pokemon</button>
             <h2>Chats:</h2>
             <ul id="users" class="user-list">
                 <li v-for="roomName in rooms" @click="changeRoom(roomName)">
                     <!-- {{ roomName }} -->
-                    <button v-if="room === roomName && roomName && roomName != 'gameroom'" style="background-color: #007bff;">
+                    <button v-if="room === roomName && roomName && roomName != 'gameroom'"
+                        style="background-color: #007bff;">
                         {{ roomName.includes("-") ? roomName.replace(username, "").replace('-', '') : roomName }}
                     </button>
                     <button v-else-if="roomName && roomName != 'gameroom'" style="background-color: #1a1a1a;">
@@ -110,6 +112,9 @@ export default {
         changeRoom(room) {
             this.room = room;
             this.websocketHandler.changeChat(room);
+        },
+        goBackToPokemons() {
+            this.$router.push('/pokemon')
         }
 
     }

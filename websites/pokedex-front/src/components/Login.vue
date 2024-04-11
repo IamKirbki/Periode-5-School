@@ -5,6 +5,7 @@
       <input class="login-input" id="email" type="text" placeholder="Email" v-model="email">
       <input class="login-input" id="password" type="password" placeholder="Password" v-model="password">
       <button class="login-button" @click="login">Login</button>
+      <h5 style="color: black">Or if you don't have an account, you can <router-link to="/register">register</router-link> here.</h5>
     </div>
   </div>
 </template>
@@ -25,8 +26,7 @@ export default {
         email: this.email,
         password: this.password
       }
-      console.log(postData);
-      
+
       fetch('http://localhost:3000/api/pokemon/login', {
         method: 'POST',
         headers: {
@@ -42,12 +42,12 @@ export default {
           }
         })
         .then(data => {
-          console.log(data)
-          if(data.status === "done"){
+          // console.log(data)
+          if (data.status === "done") {
             localStorage.setItem("token", data.token)
             localStorage.setItem("user_id", data.user_id)
             localStorage.setItem("user_name", data.user_name)
-            window.location.href = "http://localhost:5173/pokemon"  
+            this.$router.push("/pokemon")
           } else {
             alert("These do not match our credentials")
           }

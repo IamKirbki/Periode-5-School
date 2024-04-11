@@ -8,6 +8,7 @@
         <input class="register-input" type="password" placeholder="Password" v-model="password">
         <input class="register-input" type="password" v-model="passwordRepeat" placeholder="Confirm Password">
         <button class="register-button">Register</button>
+        <h5 style="color: black">Or if you already have account you can <router-link to="/login">login</router-link> here </h5>
       </form>
     </div>
   </div>
@@ -69,7 +70,7 @@ export default {
         })
         .then(data => {
           if (data === "Done") {
-            window.location.href = "http://localhost:5173/login"
+            this/$router.push('/pokemon');
           } else {
             alert("These do not match our credentials")
           }
