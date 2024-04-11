@@ -287,6 +287,7 @@ export default {
         end(){
             setTimeout(() => {
                 localStorage.removeItem("opponent")
+                this.router.push('/chatroom')
             }, 5000)
         }
     }
